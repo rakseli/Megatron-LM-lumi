@@ -72,6 +72,8 @@ class Bucket:
         self.data_parallel_rank = torch.distributed.get_rank(group=data_parallel_group)
 
         self.reset()
+        from megatron.optimizer.utils import shard_buffer
+        self.shard_buffer = shard_buffer
 
     def reset(self):
         self.params_with_grad = set()
@@ -88,8 +90,8 @@ class Bucket:
         if self.use_distributed_optimizer:
             # TODO: Move this import to top of file.
             # Import is here for now because of circular import errors.
-            from megatron.optimizer.utils import shard_buffer
-            local_data_view = shard_buffer(self.data)[self.data_parallel_rank]
+            # local_data_view = shard_buffer(self.data)[self.data_parallel_rank]
+            local_data_view = self.shard_buffer(self.data)[self.data_parallel_rank]
             self.communication_handle = torch.distributed._reduce_scatter_base(
                 local_data_view,
                 self.data,
