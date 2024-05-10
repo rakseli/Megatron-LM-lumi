@@ -39,11 +39,15 @@ def build_pretraining_data_loader(dataset, consumed_samples):
         raise Exception('{} dataloader type is not supported.'.format(
                 args.dataloader_type))
 
+    device_count = torch.cuda.device_count()
+    device = args.rank % device_count
+
     # Torch dataloader.
     return torch.utils.data.DataLoader(dataset,
                                        batch_sampler=batch_sampler,
                                        num_workers=args.num_workers,
-                                       pin_memory=True)
+                                       pin_memory=True,
+                                       pin_memory_device=f"cuda:{device}")
 
 class MegatronPretrainingSampler:
 

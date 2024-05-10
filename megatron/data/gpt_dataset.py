@@ -5,6 +5,7 @@
 import hashlib
 import os
 import time
+import sys
 
 import numpy as np
 import torch
@@ -216,6 +217,7 @@ def _build_dataset(dataset_name, data_prefix, splits_string,
     documents = np.arange(start=0, stop=total_num_of_documents,
                         step=1, dtype=np.int32)
 
+    #print(dataset_name, data_prefix)
     dataset = GPTDataset(dataset_name, data_prefix, documents, indexed_dataset,
                          splits_string, num_samples, seq_length, seed,
                          data_cache_path=data_cache_path)
@@ -249,7 +251,13 @@ class GPTDataset(torch.utils.data.Dataset):
         self.return_doc_ids = return_doc_ids
 
         # Checks
-        assert np.min(documents) >= 0
+        try:
+            assert np.min(documents) >= 0
+        except AssertionError:
+            print("indexed_dataset:", indexed_dataset, file=sys.stderr)
+            print("name:", name, file=sys.stderr)
+            print("len documents:", len(documents), file=sys.stderr)
+            raise AssertionError
         assert np.max(documents) < indexed_dataset.sizes.shape[0]
 
         # Build index mappings.
