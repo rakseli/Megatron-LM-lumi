@@ -57,28 +57,27 @@ export CC=gcc-10
 export CXX=g++-10
 
 # singularity setup
-# Container with TCPStore patch.
-CONTAINER="/scratch/project_462000353/containers/flashattention_v2_new"
-SING_BIND="/scratch/project_462000086,/scratch/project_462000444,/scratch/project_462000353"
 
-# LR from LLaMa 2 70B.
-LEARNING_RATE=1.5e-4
-MIN_LR=1.5e-5
+CONTAINER="/scratch/project_462000319/containers/flashattention_v2_new"
+#CONTAINER=/appl/local/containers/sif-images/lumi-pytorch-rocm-5.6.1-python-3.10-pytorch-v2.2.0.sif
+#CONTAINER="/flash/project_462000424/singularity/container_out3.sif"
+SING_BIND="/scratch/project_462000319,/flash/project_462000319,/scratch/project_462000086,/scratch/project_462000444,/scratch/project_462000353"
+
+LEARNING_RATE=3.2e-4
 
 set -euo pipefail
 
-CHECKPOINT_PATH=/scratch/project_462000353/europa-checkpoints/1024N-lr-fixed
-TENSORBOARD_PATH="tensorboard/v3-train-lr-fixed.$SLURM_JOB_ID"
+CHECKPOINT_PATH=/scratch/project_462000353/europa-checkpoints/1024N
+TENSORBOARD_PATH="tensorboard/v3-train.$SLURM_JOB_ID"
 
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 
 # sets TRAIN_DATA and VALIDATION_DATA
-source europa_data.sh
+source europa_data_flash.sh
 
-MERGES=/scratch/project_462000353/europa-tokenizer/merges.txt
-VOCAB=/scratch/project_462000353/europa-tokenizer/vocab.json
+MERGES=/flash/project_462000319/europa-tokenizer/merges.txt
+VOCAB=/flash/project_462000319/europa-tokenizer/vocab.json
 
-# These are from LLaMa 2, except for SEQ_LEN.
 NLAYERS=80
 NHIDDEN=8192
 NHEADS=64
@@ -87,21 +86,23 @@ SEQ_LEN=5120
 
 MICRO_BATCH_SIZE=1
 
-# Global batch size in tokens ~5.25M. This is 25% more than LLaMa 2 due to larger SEQ_LEN.
+# Global batch size in tokens ~5.25M
 GLOBAL_BATCH_SIZE=1024
 
-# Experimentally optimized for LUMI and 71B params.
 PP_SIZE=8
 TP_SIZE=8
 VPP_SIZE=2
+
+# export MEMORY_OPT_ALLREDUCE_SIZE=150000000
+# echo "MEMORY_OPT_ALLREDUCE_SIZE $MEMORY_OPT_ALLREDUCE_SIZE"
 
 TOTAL_TOKENS=3_000_000_000_000
 TOTAL_TOKENS=${TOTAL_TOKENS//_}    # drop "_" for bash math
 TRAIN_SAMPLES=$((TOTAL_TOKENS/SEQ_LEN))
 LR_DECAY_SAMPLES=$TRAIN_SAMPLES
-# 2000 steps from LLaMa 2.
+# LR_WARMUP_SAMPLES=2000
 LR_WARMUP_SAMPLES=$((2000*GLOBAL_BATCH_SIZE))
-# Also from LLaMa 2.
+# I'm setting this to:
 NUM_QUERY_GROUPS=8
 
 LOG_INTERVAL=1
@@ -109,14 +110,13 @@ SAVE_INTERVAL=500
 EVAL_INTERVAL=4000
 EVAL_STEPS=100
 
-# These are the same as LLaMa 2.
 OPTIMIZER_ARGS=" \
     --optimizer adam \
     --adam-beta1 0.9 \
     --adam-beta2 0.95 \
     --adam-eps 1e-5 \
     --lr $LEARNING_RATE \
-    --min-lr $MIN_LR \
+    --min-lr 3e-5 \
     --lr-decay-style cosine \
     --lr-decay-samples $LR_DECAY_SAMPLES \
     --lr-warmup-samples $LR_WARMUP_SAMPLES \
@@ -124,11 +124,7 @@ OPTIMIZER_ARGS=" \
     --weight-decay 1e-1 \
     --use-distributed-optimizer"
 
-# sqrt(2/(NHIDDEN*5)), from https://github.com/bigscience-workshop/bigscience/blob/master/train/lessons-learned.md
-INIT_METHOD_STD=0.007
 
-# These arguments are from LLaMa 2.
-# Our code has a hard-coded fix for bf16 where RoPE inverse frequency uses fp32.
 GPT_ARGS=" \
     --num-layers $NLAYERS \
     --hidden-size $NHIDDEN \
@@ -144,7 +140,7 @@ GPT_ARGS=" \
     --merge-file $MERGES \
     --bf16 \
     --disable-bias-linear \
-    --init-method-std $INIT_METHOD_STD \
+    --init-method-std 0.0048 \
     --make-vocab-size-divisible-by 128 \
     --no-gradient-accumulation-fusion \
     --normalization RMSNorm \
@@ -155,16 +151,15 @@ GPT_ARGS=" \
     --attention-dropout 0 \
     --hidden-dropout 0 \
     --no-query-key-layer-scaling \
-    --attention-softmax-in-fp32 \
-    --accumulate-allreduce-grads-in-fp32 \
     --use-rotary-position-embeddings \
     --no-bias-dropout-fusion \
-    --no-masked-softmax-fusion \
     --group-query-attention \
     --num-query-groups $NUM_QUERY_GROUPS \
-    --recompute-activations \
     $OPTIMIZER_ARGS \
     "
+#    --no-async-tensor-model-parallel-allreduce \
+
+
 
 OUTPUT_ARGS=" \
     --save $CHECKPOINT_PATH \
@@ -200,6 +195,7 @@ CMD=" \
     --valid-data-path $VALIDATION_DATA \
     --dataloader-type single \
     --num-workers 0 \
+    --recompute-activations \
     --distributed-timeout-minutes 60 \
     "
 

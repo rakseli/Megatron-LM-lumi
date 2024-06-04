@@ -6,6 +6,7 @@ source /opt/miniconda3/bin/activate pytorch
 
 # Samuel's fix for apparent error in SLURM initialization 
 if [ $SLURM_LOCALID -eq 0 ]; then
+    du -h /dev/shm/
     rm -rf /dev/shm/*
     rocm-smi || true
 else
@@ -30,6 +31,8 @@ export NCCL_DEBUG_SUBSYS=INIT,COLL
 
 export RANK=$SLURM_PROCID
 export LOCAL_RANK=$SLURM_LOCALID
+echo 'Set PYTORCH_HIP_ALLOC_CONF='max_split_size_mb:512''
+export PYTORCH_HIP_ALLOC_CONF='max_split_size_mb:512'
 
 echo "Launching on $SLURMD_NODENAME ($SLURM_PROCID/$SLURM_JOB_NUM_NODES)," \
      "master $MASTER_ADDR port $MASTER_PORT," \
