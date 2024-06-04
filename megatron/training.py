@@ -757,6 +757,8 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
     timers('interval-time', log_level=0).start(barrier=True)
     print_datetime('before the start of training step')
     report_memory_flag = True
+    # Added by Antti.
+    torch.cuda.empty_cache()
     while iteration < args.train_iters:
         
         update_num_microbatches(args.consumed_train_samples)
