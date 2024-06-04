@@ -9,3 +9,6 @@ logs
 .vscode
 tensorboard/*
 workdir/*
+debug-logs/*
+pythonuserbase/*
+ds_configs/*
