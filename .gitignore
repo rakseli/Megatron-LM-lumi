@@ -7,8 +7,5 @@ build
 slurm*
 logs
 .vscode
-tensorboard/*
-workdir/*
-debug-logs/*
-pythonuserbase/*
-ds_configs/*
+lumi_scripts/llama3/llama-logs
+lumi_scripts/llama3/workdir
