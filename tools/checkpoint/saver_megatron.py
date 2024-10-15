@@ -21,6 +21,7 @@ def add_arguments(parser):
     group.add_argument('--target-pipeline-parallel-size', type=int,
                        help='Target tensor model parallel size, default to the pipeline parall size '
                        'in the input checkpoint if provided by the loader, otherwise to 1')
+    group.add_argument('--pad',action='store_true')
 
 def save_checkpoint(queue, args):
 
@@ -212,7 +213,7 @@ def save_checkpoint(queue, args):
     check_message(embeddings_msg)
 
     # Deal with padding
-    if md.true_vocab_size is not None:
+    if md.true_vocab_size is not None and args.pad:
         # figure out what our padded vocab size is
         orig_vocab_size = orig_word_embed.shape[0]
         margs.padded_vocab_size = _vocab_size_with_padding(md.true_vocab_size, margs)
