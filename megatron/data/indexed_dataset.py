@@ -192,8 +192,10 @@ class _IndexReader(object):
             )
 
     def __del__(self) -> None:
-        self._bin_buffer_mmap._mmap.close()
-        del self._bin_buffer_mmap
+        """Clean up the object"""
+        if hasattr(self, "bin_buffer_mmap"):
+            self.bin_buffer_mmap._mmap.close()
+            del self.bin_buffer_mmap
 
     def __len__(self) -> int:
         return self._sequence_count
@@ -241,10 +243,10 @@ class MMapIndexedDataset(torch.utils.data.Dataset):
         self._do_init(path, skip_warmup=True, multimodal=False)
 
     def __del__(self) -> None:
-        self._bin_buffer_mmap._mmap.close()
-        del self._bin_buffer_mmap
-        del self._index
-
+        """Clean up the object"""
+        if hasattr(self, "bin_buffer_mmap"):
+            self.bin_buffer_mmap._mmap.close()
+            del self.bin_buffer_mmap
     def __len__(self) -> int:
         return len(self._index)
 
