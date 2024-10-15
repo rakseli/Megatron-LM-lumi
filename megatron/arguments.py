@@ -739,12 +739,12 @@ def _add_training_args(parser):
                        'global batch size. This choice will result in 1 for '
                        'number of micro-batches.')
     group.add_argument('--rampup-batch-size', nargs='*', default=None,
-                       help='Batch size ramp up with the following values:'
+                       help='Batch size ramp up with the following values: '
                        '  --rampup-batch-size <start batch size> '
                        '                      <batch size incerement> '
                        '                      <ramp-up samples> '
                        'For example:'
-                       '   --rampup-batch-size 16 8 300000 \ '
+                       '   --rampup-batch-size 16 8 300000  '
                        '   --global-batch-size 1024'
                        'will start with global batch size 16 and over '
                        ' (1024 - 16) / 8 = 126 intervals will increase'
