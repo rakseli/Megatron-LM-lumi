@@ -457,16 +457,17 @@ def _build_index_mappings(name, data_prefix, documents, sizes,
             print('write access to.')
             data_cache_success = False
 
-    counts = torch.cuda.LongTensor([data_cache_success])
-    torch.distributed.all_reduce(counts, group=mpu.get_data_parallel_group())
-    torch.distributed.all_reduce(counts, group=mpu.get_pipeline_model_parallel_group())
-    if counts[0].item() != (
-        torch.distributed.get_world_size() //
-        torch.distributed.get_world_size(group=mpu.get_tensor_model_parallel_group())):
-        print_rank_0("Data index creation unsuccessful, exiting.")
-        exit()
-
+    #counts = torch.cuda.LongTensor([data_cache_success])
+    #print(f"Counts {counts[0].item()}")
+    #torch.distributed.all_reduce(counts, group=mpu.get_data_parallel_group())
+    #torch.distributed.all_reduce(counts, group=mpu.get_pipeline_model_parallel_group())
+    #if counts[0].item() != (
+    #    torch.distributed.get_world_size() //
+    #    torch.distributed.get_world_size(group=mpu.get_tensor_model_parallel_group())):
+    #    print_rank_0("Data index creation unsuccessful, exiting.")
+    #    exit()
     # Load mappings.
+    torch.distributed.barrier()
     start_time = time.time()
     print_rank_0(f" > loading doc-idx mapping from {idx_path['doc']}")
     doc_idx = np.load(idx_path['doc'], allow_pickle=True, mmap_mode='r')
