@@ -11,6 +11,6 @@ lumi_scripts/llama3/llama-logs
 lumi_scripts/llama3/debug-files
 lumi_scripts/llama3/pythonuserbase/
 lumi_scripts/llama3/workdir/
-lumi_scripts/core
+lumi_scripts/llama3/core
 
 
