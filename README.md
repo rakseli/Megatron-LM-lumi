@@ -1,7 +1,13 @@
 # Info
-
-This is a detached fork of Megatron-LM, building upon https://github.com/NVIDIA/Megatron-LM/tree/4e79e712ea4a8c0e4328d888060c4adc172cbfa0. 
-
+- This is a detached fork of Megatron-LM, building upon https://github.com/NVIDIA/Megatron-LM/tree/4e79e712ea4a8c0e4328d888060c4adc172cbfa0. 
+- Main tranining scripts can be found `lumi_scripts/`
+   - `llama3` &rarr; Llama 3.1 related scripts
+      - pretraining scripts are used with `-d/-r/-p` flags, see the script contents for details
+      - `pretrain_llama3-8b-old-container-sbatch.sh` uses a container before LUMI 24 update
+      - `pretrain_llama3-8b-sbatch.sh` uses a module build with EasyBuild targeted for new ROCM and LUMI versions
+   - `viking-europa`
+      - old viking and europa scripts
+      - (may) need extra work to get running as they are treated as deprecated
 
 
 # Original Megatron-LM readme:
