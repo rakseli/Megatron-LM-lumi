@@ -25,7 +25,7 @@ export WORLD_SIZE=$SLURM_NTASKS
 # compilers in the container
 export CC=gcc-10
 export CXX=g++-10
-
+export CUDA_DEVICE_MAX_CONNECTIONS=1
 export MEMORY_OPT_ALLREDUCE_SIZE=150000000
 echo "MEMORY_OPT_ALLREDUCE_SIZE $MEMORY_OPT_ALLREDUCE_SIZE"
 
@@ -34,11 +34,11 @@ wd=$(realpath workdir)
 set -euo pipefail
 
 # singularity setup
-CONTAINER="/scratch/project_462000353/containers/vaino_flashattention_v2_new"
+CONTAINER="/scratch/project_462000353/containers/flashattention_v2_new"
 SING_BIND="/scratch/project_462000353"
 
-PP_SIZE=1
-TP_SIZE=2
+PP_SIZE=4
+TP_SIZE=4
 
 OPTSTRING=":drp"
 
@@ -191,13 +191,13 @@ GPT_ARGS=" \
     --rope-theta 500000.0 \
     --attention-softmax-in-fp32 \
     --accumulate-allreduce-grads-in-fp32 \
-    --overlap-p2p-communication \
     --recompute-activations \
     --make-vocab-size-divisible-by 1 \
     --distributed-timeout-minutes 60
     $OPTIMIZER_ARGS \
     "
-
+#    --overlap-p2p-communication \
+#Non-interleaved pipeline parallelism does not support overlapping p2p communication
 
 OUTPUT_ARGS=" \
     --log-interval $LOG_INTERVAL \
@@ -238,12 +238,11 @@ BIND_MASK_1="0x${c}000000000000,0x${c}00000000000000,0x${c}0000,0x${c}000000,0x$
 #BIND_MASK_2="0x${c}00000000000000${c}000000000000,0x${c}00000000000000${c}00000000000000,0x${c}00000000000000${c}0000,0x${c}00000000000000${c}000000,0x${c}00000000000000${c},0x${c}00000000000000${c}00,0x${c}00000000000000${c}00000000,0x${c}00000000000000${c}0000000000"
 
 BIND_MASK="$BIND_MASK_1"
-echo "Using --cpu-bind=mask_cpu:$BIND_MASK"
 
 # add a pythonuserbase to an empty dir to avoid problems with user's local
 # python install being imported into the singularity container.
-mkdir -p pythonuserbase
-export PYTHONUSERBASE=pythonuserbase
+#mkdir -p pythonuserbase
+#export PYTHONUSERBASE=
 
 echo $CMD
 
@@ -255,16 +254,17 @@ if [ ! -d "$wd"/cray-deps ] ; then
   cp /usr/lib64/libcxi* $wd/cray-deps
 fi
 
+      
 if [ "$SLURM_JOB_PARTITION" = "dev-g" ]; then
   echo "Lumi dev-g partition is used, CPU binding is not used"
   srun \
       --label \
-      --cpu-bind=mask_cpu:$BIND_MASK \
       singularity exec \
       -B $PWD \
       -B /opt/cray:/opt/cray \
       -B "$wd"/cray-deps:/opt/cray-deps \
       -B "$wd":/workdir \
+      -B "$wd/tensorboard" \
       -B "$SING_BIND" \
       "$CONTAINER" \
       ./old_launch.sh \
