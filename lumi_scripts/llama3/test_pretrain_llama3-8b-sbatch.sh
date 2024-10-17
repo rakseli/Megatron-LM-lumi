@@ -1,13 +1,11 @@
 #!/bin/bash
 
-#SBATCH --job-name=test-llama31-8B-continued-pretraining-2-nodes-explicit-vocab-size-standard-g
-
-# testing 
-#SBATCH --time=00:30:00
+#SBATCH --job-name=test-llama31-8B-continued-pretraining-8-nodes-new-module
+#SBATCH --time=01:30:00
 ##SBATCH --time=02-00:00:00 production
-##SBATCH --partition=dev-g
-#SBATCH --partition=standard-g
-#SBATCH --nodes=2
+#SBATCH --partition=dev-g
+##SBATCH --partition=standard-g
+#SBATCH --nodes=8
 ##SBATCH --nodes=64 production
 #SBATCH --cpus-per-task=7
 #SBATCH --ntasks-per-node=8
@@ -21,24 +19,28 @@
 
 set -euo pipefail
 
+export EBU_USER_PREFIX="/projappl/project_462000353/Easybuild"
 module purge
-ml use /appl/local/csc/modulefiles/
-ml pytorch/2.4
+module load LUMI/24.03 partition/G
+module load PyTorch/2.3.1-rocm-6.0.3-python-3.12-singularity-20240926
+module load PrgEnv-amd #Clang compiler for the data indexing
 
-mkdir -p workdir
-wd=$(realpath workdir)
 
-PP_SIZE=2
-TP_SIZE=2
+mkdir -p workdir_new_container
+wd=$(realpath workdir_new_container)
+
+PP_SIZE=4
+TP_SIZE=4
 
 OPTSTRING=":drp"
+
 
 while getopts ${OPTSTRING} opt; do
   case ${opt} in
 
     d)
       echo "Option -d devel, start from scratch"
-      SAVE_CHECKPOINT_DIR="/scratch/project_462000353/akselir/llama31-8b-megatron-format-devel-checkpoints-tp$TP_SIZE-pp$PP_SIZE"
+      SAVE_CHECKPOINT_DIR="/scratch/project_462000353/akselir/llama31-8b-megatron-format-devel-8-nodes-new-module-checkpoints-tp$TP_SIZE-pp$PP_SIZE"
       LOAD_CHECKPOINT_DIR="/scratch/project_462000353/models/llama31-8b-tp$TP_SIZE-pp$PP_SIZE-megatron-format"
       TENSORBOARD_PATH="$wd/tensorboard/$SLURM_JOB_NAME"
       rm -rf "$SAVE_CHECKPOINT_DIR" "$TENSORBOARD_PATH"
@@ -80,25 +82,30 @@ while getopts ${OPTSTRING} opt; do
 done
 
 # distributed setup
-export NCCL_IFNAME=hsn
-export NCCL_SOCKET_IFNAME=hsn0,hsn1,hsn2,hsn3
-export NCCL_NET_GDR_LEVEL=PHB
-export NCCL_DEBUG=INFO 
-export NCCL_DEBUG_SUBSYS=INIT,COLL
-export NCCL_DEBUG_FILE=/tmp/$(whoami)-rccl-rank$SLURM_PROCID.txt
-export CUDA_DEVICE_MAX_CONNECTIONS=1
 export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
 export MASTER_PORT=9999
+#debug variables
+export TORCH_DISTRIBUTED_DEBUG=INFO
+export NCCL_DEBUG=INFO
+#export RCCL_KERNEL_COLL_TRACE_ENABLE=1
+#export NCCL_DEBUG_SUBSYS=INIT,COLL
+#for socket timeout
+export NCCL_IB_TIMEOUT=22
+######################
+export CUDA_DEVICE_MAX_CONNECTIONS=1
+export OMP_NUM_THREADS=1
+#compilers
+export CC=clang
+export CXX=clang++
 
-
-
-DATA_ROOT="/flash/project_462000353/continued_pretraining/data/mistral_tokenizer_extended_fin/merged_datasets_standard"
-TRAIN_DATA="0.7 ${DATA_ROOT}/finnish 0.15 ${DATA_ROOT}/fineweb-ebu 0.01 ${DATA_ROOT}/Tatoeba 0.04 ${DATA_ROOT}/starcoderdata"
+DATA_ROOT="/scratch/project_462000353/data/processed-llama31/merged"
+CACHE_PATH="${DATA_ROOT}/index-cache"
+TRAIN_DATA="0.7 ${DATA_ROOT}/finnish 0.15 ${DATA_ROOT}/fineweb-edu 0.01 ${DATA_ROOT}/xling 0.04 ${DATA_ROOT}/starcoder"
 
 TOKENIZER="/scratch/project_462000353/models/llama31-8b"
 
 MICRO_BATCH_SIZE=1
-GLOBAL_BATCH_SIZE=512
+GLOBAL_BATCH_SIZE=64
 NLAYERS=32
 NHIDDEN=4096
 NHEADS=32
@@ -106,10 +113,11 @@ FFN_HIDDEN_SIZE=14336
 NUM_QUERY_GROUPS=8
 SEQ_LEN=8192
 
+INIT_METHOD_STD=0.00747017
+
 LEARNING_RATE=2e-5
 MIN_LEARNING_RATE=1e-8
-export MEMORY_OPT_ALLREDUCE_SIZE=150000000
-echo "MEMORY_OPT_ALLREDUCE_SIZE $MEMORY_OPT_ALLREDUCE_SIZE"
+
 
 TOTAL_TOKENS=75_000_000_000
 TOTAL_TOKENS=${TOTAL_TOKENS//_}    # drop "_" for bash math
@@ -160,6 +168,7 @@ GPT_ARGS=" \
     --num-attention-heads $NHEADS \
     --ffn-hidden-size $FFN_HIDDEN_SIZE \
     --seq-length $SEQ_LEN \
+    --data-cache-path $CACHE_PATH \
     --max-position-embeddings $SEQ_LEN \
     --micro-batch-size $MICRO_BATCH_SIZE \
     --global-batch-size $GLOBAL_BATCH_SIZE \
@@ -168,24 +177,30 @@ GPT_ARGS=" \
     --hf_tokenizer_path $TOKENIZER \
     --bf16 \
     --disable-bias-linear \
-    --init-method-std 0.0048 \
-    --no-gradient-accumulation-fusion \
+    --init-method-std $INIT_METHOD_STD \
     --normalization RMSNorm \
     --norm-epsilon 1e-05 \
-    --seed 1234 \
-    --swiglu \
+    --seed 42 \
+    --no-bias-dropout-fusion \
     --untie-embeddings-and-output-weights \
+    --no-bias-dropout-fusion \
+    --no-masked-softmax-fusion \
+    --no-gradient-accumulation-fusion \
+    --group-query-attention \
+    --num-query-groups $NUM_QUERY_GROUPS \
+    --no-query-key-layer-scaling \
     --use-flash-attn \
+    --swiglu \
+    --attention-dropout 0 \
+    --hidden-dropout 0 \
     --position-embedding-type rope \
     --use-rope-scaling \
     --rope-theta 500000.0 \
-    --attention-dropout 0 \
-    --hidden-dropout 0 \
-    --no-query-key-layer-scaling \
-    --no-masked-softmax-fusion \
-    --sequence-parallel \
-    --num-query-groups $NUM_QUERY_GROUPS \
-    --group-query-attention \
+    --attention-softmax-in-fp32 \
+    --accumulate-allreduce-grads-in-fp32 \
+    --recompute-activations \
+    --make-vocab-size-divisible-by 1 \
+    --distributed-timeout-minutes 60
     $OPTIMIZER_ARGS \
     "
 
@@ -204,22 +219,26 @@ OUTPUT_ARGS=" \
     --log-validation-ppl-to-tensorboard \
     "
 
-CMD=" \
-    ../../pretrain_gpt.py \
+PARALLEL_ARGS=" \
     --tensor-model-parallel-size $TP_SIZE \
     --pipeline-model-parallel-size $PP_SIZE \
+    --sequence-parallel
+"
+
+CMD=" \
+    ../../pretrain_gpt.py \
+    $PARALLEL_ARGS \
     $GPT_ARGS \
     $OUTPUT_ARGS \
     --data-path $TRAIN_DATA \
     --dataloader-type single \
-    --num-workers 0 \
+    --num-workers 7 \
     "
 
 c="fe"
 
 # Bind mask for one thread per core
 BIND_MASK_1="0x${c}000000000000,0x${c}00000000000000,0x${c}0000,0x${c}000000,0x${c},0x${c}00,0x${c}00000000,0x${c}0000000000"
-
 
 BIND_MASK="$BIND_MASK_1"
 echo "Using --cpu-bind=mask_cpu:$BIND_MASK"
@@ -231,9 +250,9 @@ echo "START $SLURM_JOBID: $(date)"
 
 if [ "$SLURM_JOB_PARTITION" = "dev-g" ]; then
   echo "Lumi dev-g partition is used, CPU binding is not used"
-  srun \
-    --label launch.sh \
-     $CMD
+    srun --label \
+    singularity exec $SIF \
+    conda-python-distributed $CMD
 else
   echo "Using --cpu-bind=mask_cpu:$BIND_MASK"
   srun \
