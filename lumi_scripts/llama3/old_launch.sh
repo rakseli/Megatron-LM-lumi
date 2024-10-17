@@ -3,7 +3,6 @@
 # Launch script used by slurm scripts, don't invoke directly.
 
 source /opt/miniconda3/bin/activate pytorch
-
 # Samuel's fix for apparent error in SLURM initialization 
 if [ $SLURM_LOCALID -eq 0 ]; then
     rm -rf /dev/shm/*
