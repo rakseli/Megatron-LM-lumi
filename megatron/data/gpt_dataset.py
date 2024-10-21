@@ -456,10 +456,17 @@ def _build_index_mappings(name, data_prefix, documents, sizes,
             print('ensure you have write access to this directory or specify one that you do have')
             print('write access to.')
             data_cache_success = False
-
     counts = torch.cuda.LongTensor([data_cache_success])
+    print(f'_build_index_mappings on rank {torch.distributed.get_rank()}, starting the all reduce', flush=True)
+    print(f"debug counts on rank {torch.distributed.get_rank()}: {counts[0].item()}",flush=True)
     torch.distributed.all_reduce(counts, group=mpu.get_data_parallel_group())
+    print(f'_build_index_mappings on rank {torch.distributed.get_rank()}, passed the all reduce in data parallel', flush=True)
+    print("debug counts after all reduce in data parallel", counts[0].item(),flush=True)
+    print(f"PP group starting the all reduce: {torch.distributed.get_process_group_ranks(group=mpu.get_tensor_model_parallel_group())}",flush=True)
     torch.distributed.all_reduce(counts, group=mpu.get_pipeline_model_parallel_group())
+    print(f'_build_index_mappings on process group {torch.distributed.get_process_group_ranks(group=mpu.get_tensor_model_parallel_group())}, passed the all reduce in pipeline parallel', flush=True)
+    print("debug counts after all reduce in pipeline parallel", counts[0].item(),flush=True)
+    print('debug:', counts[0].item(), torch.distributed.get_world_size(), torch.distributed.get_world_size(group=mpu.get_tensor_model_parallel_group()))
     if counts[0].item() != (
         torch.distributed.get_world_size() //
         torch.distributed.get_world_size(group=mpu.get_tensor_model_parallel_group())):
