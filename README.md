@@ -3,6 +3,7 @@
 - Main tranining scripts can be found `lumi_scripts/`
    - `llama3` &rarr; Llama 3.1 related scripts
       - pretraining scripts are used with `-d/-r/-p` flags, see the script contents for details
+      - `pretrain_llama3-8b-csc-module-sbatch.sh` uses a csc build module
       - `pretrain_llama3-8b-old-container-sbatch.sh` uses a container before LUMI 24 update
       - `pretrain_llama3-8b-sbatch.sh` uses a module build with EasyBuild targeted for new ROCM and LUMI versions
    - `viking-europa`
