@@ -1,11 +1,11 @@
 #!/bin/bash
 
-#SBATCH --job-name=test-llama31-8B-continued-pretraining-8-nodes-old-container
+#SBATCH --job-name=test-llama31-8B-continued-pretraining-16-nodes-old-container
 #SBATCH --time=01:30:00
 ##SBATCH --time=02-00:00:00 production
 #SBATCH --partition=dev-g
 ##SBATCH --partition=standard-g
-#SBATCH --nodes=8
+#SBATCH --nodes=16
 ##SBATCH --nodes=64 production
 #SBATCH --cpus-per-task=7
 #SBATCH --ntasks-per-node=8
@@ -48,7 +48,7 @@ while getopts ${OPTSTRING} opt; do
 
     d)
       echo "Option -d devel, start from scratch"
-      SAVE_CHECKPOINT_DIR="/scratch/project_462000353/akselir/llama31-8b-megatron-format-devel-8-nodes-old-container-checkpoints-tp$TP_SIZE-pp$PP_SIZE"
+      SAVE_CHECKPOINT_DIR="/scratch/project_462000353/akselir/llama31-8b-megatron-format-devel-16-nodes-old-container-checkpoints-tp$TP_SIZE-pp$PP_SIZE"
       LOAD_CHECKPOINT_DIR="/scratch/project_462000353/models/llama31-8b-tp$TP_SIZE-pp$PP_SIZE-megatron-format"
       TENSORBOARD_PATH="$wd/tensorboard/$SLURM_JOB_NAME"
       rm -rf "$SAVE_CHECKPOINT_DIR" "$TENSORBOARD_PATH"

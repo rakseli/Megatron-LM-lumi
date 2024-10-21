@@ -1,11 +1,11 @@
 #!/bin/bash
 
-#SBATCH --job-name=test-llama31-8B-continued-pretraining-8-nodes-new-module
-#SBATCH --time=01:30:00
+#SBATCH --job-name=test-llama31-8B-continued-pretraining-16-nodes-new-module
+#SBATCH --time=01:00:00
 ##SBATCH --time=02-00:00:00 production
 #SBATCH --partition=dev-g
 ##SBATCH --partition=standard-g
-#SBATCH --nodes=8
+#SBATCH --nodes=16
 ##SBATCH --nodes=64 production
 #SBATCH --cpus-per-task=7
 #SBATCH --ntasks-per-node=8
@@ -29,8 +29,8 @@ module load PrgEnv-amd #Clang compiler for the data indexing
 mkdir -p workdir_new_container
 wd=$(realpath workdir_new_container)
 
-PP_SIZE=4
-TP_SIZE=4
+PP_SIZE=1
+TP_SIZE=2
 
 OPTSTRING=":drp"
 
@@ -40,7 +40,7 @@ while getopts ${OPTSTRING} opt; do
 
     d)
       echo "Option -d devel, start from scratch"
-      SAVE_CHECKPOINT_DIR="/scratch/project_462000353/akselir/llama31-8b-megatron-format-devel-8-nodes-new-module-checkpoints-tp$TP_SIZE-pp$PP_SIZE"
+      SAVE_CHECKPOINT_DIR="/scratch/project_462000353/akselir/llama31-8b-megatron-format-devel-16-nodes-new-module-checkpoints-tp$TP_SIZE-pp$PP_SIZE"
       LOAD_CHECKPOINT_DIR="/scratch/project_462000353/models/llama31-8b-tp$TP_SIZE-pp$PP_SIZE-megatron-format"
       TENSORBOARD_PATH="$wd/tensorboard/$SLURM_JOB_NAME"
       rm -rf "$SAVE_CHECKPOINT_DIR" "$TENSORBOARD_PATH"
@@ -86,14 +86,13 @@ export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
 export MASTER_PORT=9999
 #debug variables
 export TORCH_DISTRIBUTED_DEBUG=INFO
-export NCCL_DEBUG=INFO
-#export RCCL_KERNEL_COLL_TRACE_ENABLE=1
-#export NCCL_DEBUG_SUBSYS=INIT,COLL
-#for socket timeout
-export NCCL_IB_TIMEOUT=22
-######################
+export NCCL_DEBUG=WARN
+export RCCL_KERNEL_COLL_TRACE_ENABLE=1
+export NCCL_DEBUG_SUBSYS=INIT,COLL
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 export OMP_NUM_THREADS=1
+export NCCL_NSOCKS_PERTHREAD=4
+export NCCL_SOCKET_NTHREADS=2
 #compilers
 export CC=clang
 export CXX=clang++
@@ -168,7 +167,6 @@ GPT_ARGS=" \
     --num-attention-heads $NHEADS \
     --ffn-hidden-size $FFN_HIDDEN_SIZE \
     --seq-length $SEQ_LEN \
-    --data-cache-path $CACHE_PATH \
     --max-position-embeddings $SEQ_LEN \
     --micro-batch-size $MICRO_BATCH_SIZE \
     --global-batch-size $GLOBAL_BATCH_SIZE \
@@ -200,7 +198,7 @@ GPT_ARGS=" \
     --accumulate-allreduce-grads-in-fp32 \
     --recompute-activations \
     --make-vocab-size-divisible-by 1 \
-    --distributed-timeout-minutes 60
+    --distributed-timeout-minutes 180
     $OPTIMIZER_ARGS \
     "
 
@@ -252,7 +250,7 @@ if [ "$SLURM_JOB_PARTITION" = "dev-g" ]; then
   echo "Lumi dev-g partition is used, CPU binding is not used"
     srun --label \
     singularity exec $SIF \
-    conda-python-distributed $CMD
+    ./launch.sh $CMD
 else
   echo "Using --cpu-bind=mask_cpu:$BIND_MASK"
   srun \

@@ -17,8 +17,8 @@ sleep 2
 # This is needed as otherwise RCCL tries to use a network interface it has
 # noa ccess to on LUMI.
 export NCCL_SOCKET_IFNAME=hsn0,hsn1,hsn2,hsn3
-export NCCL_NET_GDR_LEVEL=3
-
+#export ROCR_VISIBLE_DEVICES=$SLURM_LOCALID
+export NCCL_NET_GDR_LEVEL=PHB
 
 # The usual PyTorch initialisations (also needed on NVIDIA)
 # Note that since we fix the port ID it is not possible to run, e.g., two
@@ -28,9 +28,9 @@ export MASTER_PORT=9999
 export WORLD_SIZE=$SLURM_NTASKS
 export RANK=$SLURM_PROCID
 export LOCAL_RANK=$SLURM_LOCALID
-export FI_CXI_DEFAULT_CQ_SIZE=262144
-export RCCL_KERNEL_COLL_TRACE_ENABLE=1 
-export PYTORCH_HIP_ALLOC_CONF='max_split_size_mb:512'
-export HSA_FORCE_FINE_GRAIN_PCIE=1
+#export FI_CXI_DEFAULT_CQ_SIZE=262144
+#export RCCL_KERNEL_COLL_TRACE_ENABLE=1 
+#export PYTORCH_HIP_ALLOC_CONF='max_split_size_mb:512'
+#export HSA_FORCE_FINE_GRAIN_PCIE=1
 # Run application
 python "$@"

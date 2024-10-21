@@ -19,8 +19,8 @@ ml use /appl/local/csc/modulefiles/
 ml load pytorch/2.4
 
 #targets are needed for right model loading in training phase
-TARGET_TP=4
-TARGET_PP=4
+TARGET_TP=2
+TARGET_PP=1
 #HF format model
 HF_FORMAT_DIR=/scratch/project_462000353/models/llama31-8b
 #output dir model

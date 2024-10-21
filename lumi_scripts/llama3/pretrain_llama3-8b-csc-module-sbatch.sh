@@ -19,12 +19,13 @@
 
 set -euo pipefail
 
-export EBU_USER_PREFIX="/projappl/project_462000353/Easybuild"
 module purge
 module load LUMI/24.03 partition/G
 ml use /appl/local/csc/modulefiles/
 ml load pytorch/2.4
-
+module load PrgEnv-amd
+module load rocm/6.0.3
+module load amd/6.0.3
 
 
 mkdir -p workdir_new_container
@@ -92,12 +93,10 @@ export RCCL_KERNEL_COLL_TRACE_ENABLE=1
 export NCCL_DEBUG_SUBSYS=INIT,COLL
 export CUDA_DEVICE_MAX_CONNECTIONS=1
 export OMP_NUM_THREADS=1
-export NCCL_NSOCKS_PERTHREAD=4
-export NCCL_SOCKET_NTHREADS=2
-#compilers
-export CC=clang
-export CXX=clang++
-
+export LD_LIBRARY_PATH=$CRAY_LD_LIBRARY_PATH:$LD_LIBRARY_PATH
+export TORCH_USE_HIP_DSA=1
+#xport CC=amdclang
+#export CXX=amdclang++
 DATA_ROOT="/scratch/project_462000353/data/processed-llama31/merged"
 CACHE_PATH="${DATA_ROOT}/index-cache"
 TRAIN_DATA="0.7 ${DATA_ROOT}/finnish 0.15 ${DATA_ROOT}/fineweb-edu 0.01 ${DATA_ROOT}/xling 0.04 ${DATA_ROOT}/starcoder"
@@ -200,7 +199,8 @@ GPT_ARGS=" \
     --accumulate-allreduce-grads-in-fp32 \
     --recompute-activations \
     --make-vocab-size-divisible-by 1 \
-    --distributed-timeout-minutes 180
+    --distributed-timeout-minutes 180 \
+    --overlap-p2p-communication
     $OPTIMIZER_ARGS \
     "
 
@@ -232,7 +232,7 @@ CMD=" \
     $OUTPUT_ARGS \
     --data-path $TRAIN_DATA \
     --dataloader-type single \
-    --num-workers 7 \
+    --num-workers 0 \
     "
 
 c="fe"
