@@ -13,4 +13,5 @@ lumi_scripts/llama3/pythonuserbase/
 lumi_scripts/llama3/workdir/
 lumi_scripts/llama3/core
 lumi_scripts/llama3/workdir_new_container
+lumi_scripts/llama3/workdir_lumi_container
 
