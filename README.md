@@ -1,15 +1,21 @@
 # Info
-- This is a detached fork of Megatron-LM, building upon https://github.com/NVIDIA/Megatron-LM/tree/4e79e712ea4a8c0e4328d888060c4adc172cbfa0. 
-- Main tranining scripts can be found `lumi_scripts/`
-   - `llama3` &rarr; Llama 3.1 related scripts
-      - pretraining scripts are used with `-d/-r/-p` flags, see the script contents for details
-      - `pretrain_llama3-8b-csc-module-sbatch.sh` uses a csc build module
-      - `pretrain_llama3-8b-old-container-sbatch.sh` uses a container before LUMI 24 update
-      - `pretrain_llama3-8b-sbatch.sh` uses a module build with EasyBuild targeted for new ROCM and LUMI versions
-   - `viking-europa`
-      - old viking and europa scripts
-      - (may) need extra work to get running as they are treated as deprecated
-
+- This branch is made for reproduction of errors caused by csc provided pytorch module
+- Model architecture is Llama3.1, but training is started from scratch
+## Reproduction
+1. Clone the brach
+```bash
+git clone -b repro https://github.com/rakseli/Megatron-LM-lumi
+cd Megatron-LM-lumi/lumi_scripts/llama3
+```
+2. Get data and tokenizer
+```bash
+wget https://a3s.fi/error-repro-462000353/error-repro.tar
+tar -xvf error-repro.tar
+```
+3. Train the model
+```bash
+sbatch pretrain-repro-csc-module-sbatch.sh
+```
 
 # Original Megatron-LM readme:
 
