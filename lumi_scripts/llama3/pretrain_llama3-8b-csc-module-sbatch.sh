@@ -88,7 +88,7 @@ export MASTER_ADDR=$(scontrol show hostnames "$SLURM_JOB_NODELIST" | head -n 1)
 export MASTER_PORT=9999
 #debug variables
 export TORCH_DISTRIBUTED_DEBUG=INFO
-export NCCL_DEBUG=WARN
+export NCCL_DEBUG=INFO
 export RCCL_KERNEL_COLL_TRACE_ENABLE=1
 export NCCL_DEBUG_SUBSYS=INIT,COLL
 export CUDA_DEVICE_MAX_CONNECTIONS=1
@@ -200,7 +200,6 @@ GPT_ARGS=" \
     --recompute-activations \
     --make-vocab-size-divisible-by 1 \
     --distributed-timeout-minutes 180 \
-    --overlap-p2p-communication
     $OPTIMIZER_ARGS \
     "
 
